@@ -13,7 +13,10 @@ git add .
 # 2. Invoke GitAI to generate and execute the commit
 gitai commit -m "Integration of core logic"
 
-# 3. Review the AI-generated proposal and confirm (y/n/e)
+# 3. Review the AI-generated proposal and confirm
+# Input options: [y]es, [n]o, or [e]dit
+# Note: If 'e' is chosen, the message will open in your default editor.
+# You must SAVE and CLOSE the file to finalize the commit.
 
 # 4. Push changes using standard Git
 git push

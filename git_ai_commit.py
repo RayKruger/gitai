@@ -314,7 +314,7 @@ def main():
             info(f"Tokens: prompt={pt}, completion={ct}, total={tt}")
             info(f"Estimated cost: ${cost:.6f}")
 
-    choice = input("Accept this commit message? [y/N/e]: ").strip().lower()
+    choice = input("Accept this commit message? [y]es/[n]o/[e]dit: ").strip().lower()
     if choice in ("y", "e"):
         lines = msg.splitlines()
 
@@ -345,6 +345,7 @@ def main():
         env = os.environ.copy()
         if choice == "e":
             cmd.append("--edit")
+            cmd.append("--cleanup=strip")
             # Force Notepad on Windows for a familiar GUI editing experience
             if os.name == "nt":
                 env["GIT_EDITOR"] = "notepad"
