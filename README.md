@@ -27,6 +27,24 @@ gitai commit -m "Intial commit commit"
 git push
 ```
 
+## Quick Start: Example AI-generated commit message
+
+docs: update README with Quick Start and installation guide
+
+35 added, 12 removed
+
+CHANGES:
+- Replaced the old project title and description with a concise overview.
+- Added a “Quick Start: Run” section containing an example commit command.
+- Introduced a full installation guide covering Windows, Linux, and macOS.
+- Included operating‑system‑specific instructions for adding the tool to PATH and setting the api key.
+- Updated the optional arguments section and removed outdated Windows‑only integration steps.
+
+Files changed:
+README.md
+config.txt
+
+
 ## Quick Start: Installation
 
 **Prerequisites**: Python 3.8+ (installed system-wide and accessible from CLI using `python` or `py`).
@@ -57,7 +75,7 @@ git push
 
 ---
 
-## Features
+## Core Features
 
 - **Standardized Messaging**: Generates commit messages following the Conventional Commits specification.
 - **Backend Flexibility**: Support for OpenAI API (cloud) and Ollama (local, privacy-preserving) inference.
