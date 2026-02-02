@@ -20,6 +20,7 @@ import configparser
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_FILE = os.path.join(SCRIPT_DIR, "config.txt")
 PRICING_FILE = os.path.join(SCRIPT_DIR, "LLM_latest_pricing.txt")
+PROMPT_FILE = os.path.join(SCRIPT_DIR, "prompt.txt")
 
 # Default Configuration
 config_defaults = {
@@ -182,7 +183,7 @@ def build_prompt(files, diff, manual_topic: str = ""):
         )
         manual_block = f"\nManual commit message topic:\n{manual_topic}\n"
 
-    return f"""
+    prompt_tmpl = """
 You are an expert software engineer.
 
 Write a Conventional Commit message based on the STAGED DIFF.
@@ -197,11 +198,25 @@ Rules:
 - Then include a section titled "Files changed:" at the VERY END and include all changed files.
 
 Files:
-{chr(10).join(files)}
+{files_list}
 {manual_block}
 STAGED DIFF:
-{diff}
+{diff_content}
 """.strip()
+
+    if os.path.exists(PROMPT_FILE):
+        try:
+            with open(PROMPT_FILE, "r", encoding="utf-8") as f:
+                prompt_tmpl = f.read().strip()
+        except Exception as e:
+            warn(f"Failed to read prompt.txt, using internal default: {e}")
+
+    return prompt_tmpl.format(
+        manual_rules=manual_rules,
+        files_list="\n".join(files),
+        manual_block=manual_block,
+        diff_content=diff
+    )
 
 
 def ensure_topic_line(msg: str, manual_topic: str) -> str:
