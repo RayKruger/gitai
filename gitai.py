@@ -304,6 +304,7 @@ def main():
     prompt = build_prompt(files, diff_for_prompt, manual_topic=args.manual_message)
 
     t_ai_start = time.perf_counter()
+    info("Generating commit message... Please be patient, this may take 1-3 minutes depending on context length.")
 
     if use_local:
         info(f"Using local Ollama backend ({LOCAL_MODEL})")

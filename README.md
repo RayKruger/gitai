@@ -13,7 +13,8 @@ git add .
 gitai commit -m "Intial commit commit"
 # or to commit without manual message:gitai commit
 # or to use a local LLM model: gitai commit -m "Initial commit" --local
-#or to use a remote LLM model:gitai commit -m "Initial commit" --api
+# or to use a remote LLM model: gitai commit -m "Initial commit" --api
+# Note: Generation may take 1-3 minutes depending on the diff size and model.
 # above depends on the default model set in config.txt
 
 # 3. Review the AI-generated commit message proposal and confirm or edit
