@@ -306,6 +306,7 @@ def main():
     print(msg)
     print("\n================================================\n")
 
+    # Cost info
     if not args.local:
         est = estimate_cost_usd(MODEL, usage)
         if est:
@@ -313,8 +314,8 @@ def main():
             info(f"Tokens: prompt={pt}, completion={ct}, total={tt}")
             info(f"Estimated cost: ${cost:.6f}")
 
-    choice = input("Accept this commit message? [y/N]: ").strip().lower()
-    if choice == "y":
+    choice = input("Accept this commit message? [y/N/e]: ").strip().lower()
+    if choice in ("y", "e"):
         lines = msg.splitlines()
 
         # Subject = first non-empty line
@@ -341,7 +342,14 @@ def main():
         if body.strip():
             cmd += ["-m", body]
 
-        res = subprocess.run(cmd)
+        env = os.environ.copy()
+        if choice == "e":
+            cmd.append("--edit")
+            # Force Notepad on Windows for a familiar GUI editing experience
+            if os.name == "nt":
+                env["GIT_EDITOR"] = "notepad"
+
+        res = subprocess.run(cmd, env=env)
         if res.returncode != 0:
             error(f"git commit failed with code {res.returncode}")
             sys.exit(res.returncode)
