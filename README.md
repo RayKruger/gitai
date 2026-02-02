@@ -29,7 +29,7 @@ git push
 
 ## Quick Start: Example AI-generated commit message
 
-docs: update README with Quick Start and installation guide
+```docs: update README with Quick Start and installation guide
 
 35 added, 12 removed
 
@@ -43,7 +43,7 @@ CHANGES:
 Files changed:
 README.md
 config.txt
-
+```
 
 ## Quick Start: Installation
 
@@ -88,7 +88,7 @@ config.txt
 ## Setup & Configuration
 
 ### 1. Prerequisites
-- Python 3.8+
+- Python 3.8+ (installed system-wide and accessible from CLI using `python` or `py`)
 - **Ollama** (Optional): Required for local inference. Refer to [Ollama.com](https://ollama.com/download).
 - **API Key**: Required for remote cloud LLM inference.
 
