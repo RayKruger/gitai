@@ -1,5 +1,5 @@
 # =========================
-# File: git_aic.py  (main script)
+# File: gitai.py  (main script)
 # =========================
 #!/usr/bin/env python3
 import os
@@ -14,33 +14,50 @@ import time
 from ollama_backend import generate_commit_message_local
 
 
-OPENAI_URL = "https://api.openai.com/v1/chat/completions"
-MODEL = "gpt-5-mini"
-LOCAL_MODEL = "gpt-oss:20b"
-# LOCAL_MODEL = "deepseek-coder:6.7b"
+import configparser
 
-# Pricing (USD per 1M tokens)
-OPENAI_API_PRICING_PER_1M = {
-    "gpt-5.2": {"input": 1.75, "cached_input": 0.175, "output": 14.00},
-    "gpt-5.1": {"input": 1.25, "cached_input": 0.125, "output": 10.00},
-    "gpt-5": {"input": 1.25, "cached_input": 0.125, "output": 10.00},
-    "gpt-5-mini": {"input": 0.25, "cached_input": 0.025, "output": 2.00},
-    "gpt-5-nano": {"input": 0.05, "cached_input": 0.005, "output": 0.40},
-    "gpt-4.1": {"input": 2.00, "cached_input": 0.50, "output": 8.00},
-    "gpt-4.1-mini": {"input": 0.40, "cached_input": 0.10, "output": 1.60},
-    "gpt-4.1-nano": {"input": 0.10, "cached_input": 0.025, "output": 0.40},
-    "gpt-4o": {"input": 2.50, "cached_input": 1.25, "output": 10.00},
-    "gpt-4o-mini": {"input": 0.15, "cached_input": 0.075, "output": 0.60},
-    "gpt-realtime": {"input": 4.00, "cached_input": 0.40, "output": 16.00},
-    "gpt-realtime-mini": {"input": 0.60, "cached_input": 0.06, "output": 2.40},
-    "o1": {"input": 15.00, "cached_input": 7.50, "output": 60.00},
-    "o3": {"input": 2.00, "cached_input": 0.50, "output": 8.00},
+# Determine script directory to locate config files
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+CONFIG_FILE = os.path.join(SCRIPT_DIR, "config.txt")
+PRICING_FILE = os.path.join(SCRIPT_DIR, "LLM_latest_pricing.txt")
+
+# Default Configuration
+config_defaults = {
+    "api_url": "https://api.openai.com/v1/chat/completions",
+    "api_model": "gpt-5-mini",
+    "api_key_env_name": "OPENAI_API_KEY",
+    "local_model": "gpt-oss:20b",
+    "default_backend": "api",
+    "max_diff_lines": "360",
+    "max_local_changed_lines": "180"
 }
 
-# Truncation settings (approx "pages" in terminal)
-LINES_PER_PAGE = 60
-MAX_DIFF_PAGES = 6
-MAX_DIFF_LINES = LINES_PER_PAGE * MAX_DIFF_PAGES
+# Load Configuration File
+config = configparser.ConfigParser()
+if os.path.exists(CONFIG_FILE):
+    config.read(CONFIG_FILE)
+    if "api" in config:
+        for key in config_defaults:
+            if key in config["api"]:
+                config_defaults[key] = config["api"][key].strip()
+
+# Set Global Variables from Config
+API_URL = config_defaults["api_url"]
+API_MODEL = config_defaults["api_model"]
+API_KEY_ENV_NAME = config_defaults["api_key_env_name"]
+LOCAL_MODEL = config_defaults["local_model"]
+DEFAULT_BACKEND = config_defaults["default_backend"].lower()
+MAX_DIFF_LINES = int(config_defaults["max_diff_lines"])
+MAX_LOCAL_CHANGED_LINES = int(config_defaults["max_local_changed_lines"])
+
+# Load Pricing
+OPENAI_API_PRICING_PER_1M = {}
+if os.path.exists(PRICING_FILE):
+    try:
+        with open(PRICING_FILE, "r", encoding="utf-8") as f:
+            OPENAI_API_PRICING_PER_1M = json.load(f)
+    except Exception as e:
+        print(f"[warn] Failed to load pricing file: {e}", file=sys.stderr)
 
 
 def info(msg): print(f"[info] {msg}")
@@ -118,9 +135,9 @@ def estimate_cost_usd(model, usage):
     return pt, ct, tt, cost
 
 
-def call_openai(api_key, prompt):
+def call_api(api_key, prompt):
     payload = {
-        "model": MODEL,
+        "model": API_MODEL,
         "messages": [
             {"role": "system", "content": "You write precise, technical git commit messages."},
             {"role": "user", "content": prompt},
@@ -129,7 +146,7 @@ def call_openai(api_key, prompt):
 
     data = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(
-        OPENAI_URL,
+        API_URL,
         data=data,
         headers={
             "Content-Type": "application/json",
@@ -145,9 +162,11 @@ def call_openai(api_key, prompt):
             return result["choices"][0]["message"]["content"].strip(), result.get("usage", {})
     except urllib.error.HTTPError as e:
         err = e.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"OpenAI API error: {err}") from None
+        raise RuntimeError(f"API error: {err}") from None
     except urllib.error.URLError as e:
-        raise RuntimeError(f"OpenAI API connection error: {e}") from None
+        raise RuntimeError(f"API connection error: {e}") from None
+    except Exception as e:
+        raise RuntimeError(f"Unexpected error calling API: {e}") from None
 
 
 def build_prompt(files, diff, manual_topic: str = ""):
@@ -234,6 +253,11 @@ def main():
         help="Use local Ollama backend"
     )
     commit_parser.add_argument(
+        "--api",
+        action="store_true",
+        help="Use remote API backend"
+    )
+    commit_parser.add_argument(
         "-m",
         "--message",
         dest="manual_message",
@@ -246,6 +270,15 @@ def main():
     if args.command != "commit":
         parser.print_help()
         sys.exit(0)
+
+    # Determine backend: explicit flag takes precedence, else use config default
+    use_local = False
+    if args.local:
+        use_local = True
+    elif args.api:
+        use_local = False
+    else:
+        use_local = (DEFAULT_BACKEND == "local")
 
     diff = get_staged_diff()
     files = get_staged_files()
@@ -261,10 +294,10 @@ def main():
         info(f"Staged diff size: {total} lines")
 
     # One prompt for both backends:
-    # - OpenAI gets truncated diff (fast, cost control)
+    # - API gets truncated diff (fast, cost control)
     # - Local gets sparse digest of full diff (better signal)
-    if args.local:
-        diff_for_prompt = simplify_diff_for_local(diff, max_changed_lines=140)
+    if use_local:
+        diff_for_prompt = simplify_diff_for_local(diff, max_changed_lines=MAX_LOCAL_CHANGED_LINES)
     else:
         diff_for_prompt = diff_used
 
@@ -272,9 +305,8 @@ def main():
 
     t_ai_start = time.perf_counter()
 
-    if args.local:
+    if use_local:
         info(f"Using local Ollama backend ({LOCAL_MODEL})")
-        info("If an 'Ollama Server' window opens, close it later to unload everything.")
         msg, usage, started, timing = generate_commit_message_local(prompt, model=LOCAL_MODEL)
         if started:
             info("Ollama server started in a separate cmd window")
@@ -288,16 +320,16 @@ def main():
             f"total_local={timing.get('total_s', 0.0):.2f}"
         )
     else:
-        api_key = os.getenv("OPENAI_API_KEY")
+        # Check configured env var
+        api_key = os.getenv(API_KEY_ENV_NAME)
         if not api_key:
-            error("OPENAI_API_KEY not set")
+            error(f"Environment variable '{API_KEY_ENV_NAME}' not set. Please set it or change 'api_key_env_name' in config.txt")
             sys.exit(1)
 
-        info(f"Using OpenAI backend ({MODEL})")
-        msg, usage = call_openai(api_key, prompt)
+        info(f"Using remote API backend ({API_MODEL})")
+        msg, usage = call_api(api_key, prompt)
 
     t_ai_end = time.perf_counter()
-    info(f"Model response received in {t_ai_end - t_ai_start:.2f} s")
 
     # Ensure Topic line placement if manual message was provided
     msg = ensure_topic_line(msg, args.manual_message)
@@ -305,10 +337,11 @@ def main():
     print("\n========== AI-generated commit message ==========\n")
     print(msg)
     print("\n================================================\n")
+    info(f"LLM Inference time: {t_ai_end - t_ai_start:.2f} s")
 
     # Cost info
-    if not args.local:
-        est = estimate_cost_usd(MODEL, usage)
+    if not use_local:
+        est = estimate_cost_usd(API_MODEL, usage)
         if est:
             pt, ct, tt, cost = est
             info(f"Tokens: prompt={pt}, completion={ct}, total={tt}")
@@ -359,8 +392,7 @@ def main():
     else:
         warn("Commit aborted")
 
-    t_end = time.perf_counter()
-    info(f"Total runtime: {t_end - t_start:.2f} s")
+
 
 
 if __name__ == "__main__":

@@ -9,7 +9,22 @@ import urllib.request
 import urllib.error
 
 
-OLLAMA_BASE_URL = "http://localhost:11434"
+import configparser
+import os
+import sys
+
+# Load config
+CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.txt")
+config = configparser.ConfigParser()
+if os.path.exists(CONFIG_FILE):
+    config.read(CONFIG_FILE)
+else:
+    # Fallback default
+    config["api"] = {
+        "ollama_base_url": "http://localhost:11434"
+    }
+
+OLLAMA_BASE_URL = config["api"].get("ollama_base_url", "http://localhost:11434").strip()
 OLLAMA_CHAT_URL = f"{OLLAMA_BASE_URL}/v1/chat/completions"
 
 

@@ -1,0 +1,20 @@
+[api]
+# default backend: api or local
+default_backend = api
+
+# Remote API settings (OpenAI-compatible)
+api_url = https://api.openai.com/v1/chat/completions
+api_model = gpt-5-mini
+api_key_env_name = OPENAI_API_KEY
+
+# Ollama local llm settings (optional)
+ollama_base_url = http://localhost:11434
+# For local model use one you have pulled, e.g. deepseek-coder:6.7b or gpt-oss:20b
+local_model = gpt-oss:20b
+
+# Analysis settings
+# Maximum number of diff lines to send to the AI (prevents token overflow)
+max_diff_lines = 360
+
+# For local models, maximum number of changed lines to summarize
+max_local_changed_lines = 180
