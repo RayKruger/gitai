@@ -11,7 +11,7 @@ The utility integrates directly into the standard Git workflow, replacing only t
 git add .
 
 # 2. Invoke GitAI to generate and execute the commit
-gitai commit -m "Intial commit commit"
+gitai commit -m "Intial commit"
 # or to commit without manual message: gitai commit
 # or to use a local LLM model: gitai commit -m "Initial commit" --local
 # or to use a remote LLM model: gitai commit -m "Initial commit" --api
@@ -24,7 +24,7 @@ gitai commit -m "Intial commit commit"
 # You must SAVE and CLOSE the file to finalize the commit.
 
 # 4. Push changes using standard Git
-git push
+git push origin main
 ```
 
 ## Quick Start: Example AI-generated commit message
